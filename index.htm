@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مكتب السلطان للسياحة والتنقلات البرية | سوريا</title>
+    
+    <!-- أيقونة التاج الملكي في تبويب المتصفح (Favicon) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👑</text></svg>">
+
+    <!-- ووسوم تحسين محركات البحث SEO -->
+    <meta name="description" content="مكتب السلطان للسياحة والتنقلات البرية داخل سوريا. حجز رحلات ومقاعد بولمان وفانات لجميع المحافظات بأفضل الأسعار.">
+    <meta name="keywords" content="مكتب السلطان, رحلات سوريا, حجز بولمان, تنقلات برية, اللاذقية, دمشق, طرطوس, حلب">
+    <meta name="robots" content="index, follow">
+
+    <!-- خط تجوال الملكي -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+    <!-- أيقونات FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gold: { light: '#F4D068', DEFAULT: '#D4AF37', dark: '#AA820A' },
+                        crimson: { light: '#B31312', DEFAULT: '#800020', dark: '#4A0012' }
+                    },
+                    fontFamily: { tajawal: ['Tajawal', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <!-- مكتبات Firebase السحابية -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+    <style>
+        body { font-family: 'Tajawal', sans-serif; background-color: #FAF8F5; }
+        .gold-gradient { background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 25%, #B38728 50%, #FBF5B7 75%, #AA771C 100%); }
+        .crown-card { border: 1px solid rgba(212, 175, 55, 0.3); box-shadow: 0 4px 20px rgba(128, 0, 32, 0.06); }
+        .seat-btn { transition: all 0.2s ease-in-out; }
+        .seat-btn:hover:not(:disabled) { transform: scale(1.08); }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 pb-20 md:pb-10">
+
+    <!-- Header / شريط الهوية والتاج -->
+    <header class="bg-crimson-dark text-white sticky top-0 z-50 shadow-lg border-b-2 border-gold">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3 space-x-reverse">
+                <div class="w-10 h-10 rounded-full gold-gradient flex items-center justify-center text-crimson-dark text-xl shadow-md">
+                    <i class="fa-solid fa-crown"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-wide text-gold">مكتب السلطان</h1>
+                    <p class="text-[10px] text-gray-200">للسياحة والتنقلات البرية داخل سوريا</p>
+                </div>
+            </div>
+            
+            <button onclick="toggleAdminMode()" id="adminToggleBtn" class="bg-gold hover:bg-gold-dark text-crimson-dark font-bold text-xs md:text-sm px-3 py-1.5 rounded-lg border border-yellow-200 transition flex items-center gap-1.5 shadow">
+                <i class="fa-solid fa-user-gear"></i>
+                <span id="adminToggleText">لوحة التحكم (المالك)</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Banner البانر الرئيسي -->
+    <section class="relative bg-crimson text-white py-6 px-4 text-center border-b border-gold/40">
+        <div class="max-w-3xl mx-auto">
+            <span class="inline-block bg-gold/20 text-gold text-xs font-bold px-3 py-1 rounded-full mb-2 border border-gold/30">
+                <i class="fa-solid fa-cloud text-gold ml-1"></i> النظام متصل ومحدث مباشرة مع السحابة
+            </span>
+            <h2 class="text-2xl md:text-3xl font-extrabold mb-1 text-white">رحلات السلطان البرية لجميع المحافظات</h2>
+            <p class="text-xs md:text-sm text-gray-200">حجز مقاعد واستعلام آلي متصل فورياً بالمكتب</p>
+        </div>
+    </section>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto px-4 py-6">
+
+        <!-- مؤشر تحميل قاعدة البيانات -->
+        <div id="loadingSpinner" class="text-center py-10">
+            <i class="fa-solid fa-crown text-4xl text-gold animate-bounce mb-3"></i>
+            <p class="text-sm font-bold text-gray-600">جاري الاتصال بقاعدة البيانات السحابية...</p>
+        </div>
+
+        <!-- ==================== ADMIN PANEL (لوحة المالك) ==================== -->
+        <section id="adminSection" class="hidden bg-white p-5 rounded-2xl crown-card border-2 border-gold mb-8 transition-all">
+            <div class="flex justify-between items-center mb-4 border-b pb-3 border-gray-100">
+                <h3 class="text-lg font-bold text-crimson flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-gold"></i> <span id="formTitle">إضافة رحلة جديدة</span>
+                </h3>
+                <span class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-semibold">تعديل مباشر في السحابة</span>
+            </div>
+
+            <form id="tripForm" onsubmit="handleTripSubmit(event)" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">اسم الرحلة / الوجهة</label>
+                        <input type="text" id="tripName" required placeholder="مثال: رحلة كسب والشاطئ الأزرق" class="w-full text-sm p-2.5 border rounded-lg focus:ring-2 focus:ring-gold outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">المحافظة السورية</label>
+                        <select id="tripGov" class="w-full text-sm p-2.5 border rounded-lg focus:ring-2 focus:ring-gold outline-none">
+                            <option value="اللاذقية">اللاذقية</option>
+                            <option value="دمشق وريفها">دمشق وريفها</option>
+                            <option value="طرطوس">طرطوس</option>
+                            <option value="حمص">حمص</option>
+                            <option value="حماة">حماة</option>
+                            <option value="حلب">حلب</option>
+                            <option value="السويداء">السويداء</option>
+                            <option value="درعا">درعا</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">الفترة الزمانية</label>
+                        <select id="tripPeriod" class="w-full text-sm p-2.5 border rounded-lg focus:ring-2 focus:ring-gold outline-none">
+                            <option value="صباحية">صباحية (06:00 ص - 11:00 ص)</option>
+                            <option value="مسائية">مسائية (02:00 م - 08:00 م)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">توقيت الانطلاق</label>
+                        <input type="text" id="tripTime" required placeholder="مثال: 07:30 صباحاً" class="w-full text-sm p-2.5 border rounded-lg focus:ring-2 focus:ring-gold outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">وسيلة النقل البرية</label>
+                        <select id="tripTransport" class="w-full text-sm p-2.5 border rounded-lg focus:ring-2 focus:ring-gold outline-none">
+                            <option value="بولمان سياحي VIP">بولمان سياحي VIP</option>
+                            <option value="فان حديث مكيف">فان حديث مكيف</option>
+                            <option value="سيارة خاصة سياحية">سيارة خاصة سياحية</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">إجمالي سعة المقاعد</label>
+                        <input type="number" id="tripTotalSeats" required min="4" max="50" placeholder="مثال: 24" class="w-full text-sm p-2.5 border rounded-lg focus:ring-2 focus:ring-gold outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">سعر الفرد (ل.س)</label>
+                        <input type="text" id="tripPrice" required placeholder="مثال: 85,000 ل.س" class="w-full text-sm p-2.5 border rounded-lg focus:ring-2 focus:ring-gold outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">أرقام المقاعد المحجوزة مسبقاً (مفصولة بفاصلة)</label>
+                    <input type="text" id="tripBookedSeats" placeholder="مثال: 1, 2, 5, 6" class="w-full text-sm p-2.5 border rounded-lg focus:ring-2 focus:ring-gold outline-none">
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit" class="flex-1 bg-crimson hover:bg-crimson-dark text-gold font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-md">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> <span id="submitBtnText">نشر وتحديث في قاعدة البيانات</span>
+                    </button>
+                    <button type="button" id="cancelEditBtn" onclick="cancelEditMode()" class="hidden bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold px-4 py-3 rounded-xl text-xs transition">
+                        إلغاء التعديل
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- أدوات التصفية والبحث -->
+        <div id="contentSection" class="hidden space-y-3 mb-6">
+            <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                <button onclick="filterTime('ALL')" id="filterBtnALL" class="time-btn active bg-crimson text-white text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap shadow-sm border border-gold/40">
+                    <i class="fa-solid fa-clock ml-1"></i> جميع المواعيد
+                </button>
+                <button onclick="filterTime('صباحية')" id="filterBtnMorning" class="time-btn bg-white text-gray-700 hover:bg-gold/10 text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap border border-gray-200">
+                    <i class="fa-solid fa-sun text-amber-500 ml-1"></i> رحلات صباحية
+                </button>
+                <button onclick="filterTime('مسائية')" id="filterBtnEvening" class="time-btn bg-white text-gray-700 hover:bg-gold/10 text-xs font-bold px-4 py-2 rounded-full whitespace-nowrap border border-gray-200">
+                    <i class="fa-solid fa-moon text-indigo-500 ml-1"></i> رحلات مسائية
+                </button>
+            </div>
+
+            <div class="flex items-center bg-white rounded-xl p-2 border border-gray-200 shadow-sm">
+                <i class="fa-solid fa-location-dot text-crimson text-lg px-2"></i>
+                <select id="govFilterSelect" onchange="renderTrips()" class="w-full bg-transparent text-xs md:text-sm font-bold text-gray-700 outline-none">
+                    <option value="ALL">جميع المحافظات السورية</option>
+                    <option value="دمشق وريفها">دمشق وريفها</option>
+                    <option value="اللاذقية">اللاذقية</option>
+                    <option value="طرطوس">طرطوس</option>
+                    <option value="حمص">حمص</option>
+                    <option value="حماة">حماة</option>
+                    <option value="حلب">حلب</option>
+                    <option value="السويداء">السويداء</option>
+                    <option value="درعا">درعا</option>
+                </select>
+            </div>
+
+            <!-- حاوية الرحلات -->
+            <div id="tripsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2"></div>
+        </div>
+
+    </main>
+
+    <!-- Modal استعلام المقاعد -->
+    <div id="seatModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl border-2 border-gold flex flex-col max-h-[90vh]">
+            <div class="bg-crimson text-white p-4 flex justify-between items-center border-b border-gold/30">
+                <div>
+                    <h3 id="modalTripTitle" class="font-bold text-base text-gold">اسم الرحلة</h3>
+                    <p id="modalTripDetails" class="text-xs text-gray-200">تفاصيل التوقيت والمحافظة</p>
+                </div>
+                <button onclick="closeSeatModal()" class="text-gray-300 hover:text-white text-xl p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-4 overflow-y-auto flex-1">
+                <div class="flex justify-center gap-4 bg-gray-50 p-2.5 rounded-xl text-xs mb-4 border">
+                    <div class="flex items-center gap-1.5"><span class="w-4 h-4 bg-emerald-500 rounded-md inline-block"></span><span class="font-bold text-gray-700">شاغر</span></div>
+                    <div class="flex items-center gap-1.5"><span class="w-4 h-4 bg-red-500 rounded-md inline-block"></span><span class="font-bold text-gray-700">محجوز</span></div>
+                    <div class="flex items-center gap-1.5"><span class="w-4 h-4 bg-gold rounded-md inline-block"></span><span class="font-bold text-gray-700">اختيارك</span></div>
+                </div>
+
+                <div class="bg-gray-100 p-4 rounded-2xl border-2 border-gray-300 relative max-w-[280px] mx-auto">
+                    <div class="flex justify-between items-center border-b-2 border-dashed border-gray-300 pb-3 mb-4">
+                        <span class="text-[10px] font-bold text-gray-400">مقدمة المركبة</span>
+                        <div class="w-8 h-8 rounded-full bg-gray-800 text-white flex items-center justify-center text-xs shadow">🚘</div>
+                    </div>
+                    <div id="seatsGrid" class="grid grid-cols-4 gap-2.5 justify-items-center"></div>
+                </div>
+
+                <div id="selectedSeatInfo" class="mt-4 bg-amber-50 p-3 rounded-xl border border-gold/40 text-center hidden">
+                    <p class="text-xs text-amber-900 font-bold">لقد قمت باختيار <span id="selectedSeatNumber" class="text-crimson font-extrabold text-sm">المقعد 0</span></p>
+                </div>
+            </div>
+
+            <div class="p-3 bg-gray-50 border-t flex gap-2">
+                <a id="modalWhatsappBtn" href="#" target="_blank" class="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-3 rounded-xl text-center transition flex items-center justify-center gap-1.5 shadow">
+                    <i class="fa-brands fa-whatsapp text-lg"></i> تاكيد حجز المقعد عبر الواتساب
+                </a>
+                <button onclick="closeSeatModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold px-4 py-3 rounded-xl">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 🔑 تم ربط بيانات FIREBASE الخاصة بمشروعك (ALsaldan9)
+        const firebaseConfig = {
+            apiKey: "AIzaSyBJzo8Vm24uNYvosBxt6G0esrBcCofNifM",
+            authDomain: "alsaldan9.firebaseapp.com",
+            databaseURL: "https://alsaldan9-default-rtdb.firebaseio.com",
+            projectId: "alsaldan9",
+            storageBucket: "alsaldan9.firebasestorage.app",
+            messagingSenderId: "120844162805",
+            appId: "1:120844162805:web:552492c707c2dc1f3e17bc",
+            measurementId: "G-SLRGQB2V09"
+        };
+
+        // تهيئة اتصال Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const tripsRef = db.ref('trips');
+
+        let trips = [];
+        let selectedTimePeriod = 'ALL';
+        let isAdminView = false;
+        let editingTripId = null;
+        let currentActiveTrip = null;
+        let selectedSeatNum = null;
+
+        // 📡 الاستماع الفوري لقاعدة البيانات
+        tripsRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                trips = Object.keys(data).map(key => ({ ...data[key], firebaseKey: key }));
+            } else {
+                trips = [];
+            }
+            document.getElementById('loadingSpinner').classList.add('hidden');
+            document.getElementById('contentSection').classList.remove('hidden');
+            renderTrips();
+        });
+
+        function filterTime(period) {
+            selectedTimePeriod = period;
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                btn.classList.remove('bg-crimson', 'text-white', 'border-gold/40');
+                btn.classList.add('bg-white', 'text-gray-700');
+            });
+            const activeMap = { 'ALL': 'filterBtnALL', 'صباحية': 'filterBtnMorning', 'مسائية': 'filterBtnEvening' };
+            const activeBtn = document.getElementById(activeMap[period]);
+            if(activeBtn) {
+                activeBtn.classList.remove('bg-white', 'text-gray-700');
+                activeBtn.classList.add('bg-crimson', 'text-white', 'border-gold/40');
+            }
+            renderTrips();
+        }
+
+        function toggleAdminMode() {
+            isAdminView = !isAdminView;
+            const adminSec = document.getElementById('adminSection');
+            const toggleText = document.getElementById('adminToggleText');
+            
+            if(isAdminView) {
+                adminSec.classList.remove('hidden');
+                toggleText.innerText = "إغلاق لوحة المالك";
+                adminSec.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                adminSec.classList.add('hidden');
+                toggleText.innerText = "لوحة التحكم (المالك)";
+                cancelEditMode();
+            }
+            renderTrips();
+        }
+
+        function startEditTrip(id) {
+            const trip = trips.find(t => t.id === id);
+            if(!trip) return;
+
+            editingTripId = id;
+            document.getElementById('tripName').value = trip.name;
+            document.getElementById('tripGov').value = trip.gov;
+            document.getElementById('tripPeriod').value = trip.period;
+            document.getElementById('tripTime').value = trip.time;
+            document.getElementById('tripTransport').value = trip.transport;
+            document.getElementById('tripTotalSeats').value = trip.totalSeats;
+            document.getElementById('tripPrice').value = trip.price;
+            document.getElementById('tripBookedSeats').value = (trip.bookedSeats || []).join(', ');
+
+            document.getElementById('formTitle').innerText = "تعديل الرحلة في السحابة";
+            document.getElementById('submitBtnText').innerText = "حفظ التحديث في قاعدة البيانات";
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+
+            document.getElementById('adminSection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cancelEditMode() {
+            editingTripId = null;
+            document.getElementById('tripForm').reset();
+            document.getElementById('formTitle').innerText = "إضافة رحلة جديدة";
+            document.getElementById('submitBtnText').innerText = "نشر وتحديث في قاعدة البيانات";
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+        }
+
+        function handleTripSubmit(event) {
+            event.preventDefault();
+            
+            const bookedInput = document.getElementById('tripBookedSeats').value;
+            const parsedBooked = bookedInput ? bookedInput.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n)) : [];
+
+            const tripData = {
+                id: editingTripId ? editingTripId : Date.now(),
+                name: document.getElementById('tripName').value,
+                gov: document.getElementById('tripGov').value,
+                period: document.getElementById('tripPeriod').value,
+                time: document.getElementById('tripTime').value,
+                transport: document.getElementById('tripTransport').value,
+                totalSeats: parseInt(document.getElementById('tripTotalSeats').value) || 20,
+                price: document.getElementById('tripPrice').value,
+                bookedSeats: parsedBooked
+            };
+
+            if (editingTripId !== null) {
+                const existingTrip = trips.find(t => t.id === editingTripId);
+                if (existingTrip && existingTrip.firebaseKey) {
+                    db.ref('trips/' + existingTrip.firebaseKey).update(tripData, (err) => {
+                        if(!err) {
+                            alert("تم التحديث السحابي بنجاح!");
+                            cancelEditMode();
+                        }
+                    });
+                }
+            } else {
+                db.ref('trips').push(tripData, (err) => {
+                    if(!err) {
+                        alert("تم إضافة الرحلة لقاعدة البيانات المباشرة!");
+                        document.getElementById('tripForm').reset();
+                    }
+                });
+            }
+        }
+
+        function deleteTrip(firebaseKey) {
+            if(confirm("هل أنت تأكد من حذف الرحلة نهائياً من قاعدة البيانات؟")) {
+                db.ref('trips/' + firebaseKey).remove();
+            }
+        }
+
+        function openSeatModal(tripId) {
+            currentActiveTrip = trips.find(t => t.id === tripId);
+            if (!currentActiveTrip) return;
+
+            selectedSeatNum = null;
+            document.getElementById('modalTripTitle').innerText = currentActiveTrip.name;
+            document.getElementById('modalTripDetails').innerText = `${currentActiveTrip.gov} - الانطلاق: ${currentActiveTrip.time}`;
+            document.getElementById('selectedSeatInfo').classList.add('hidden');
+
+            renderSeatsGrid();
+            updateWhatsappLink();
+            document.getElementById('seatModal').classList.remove('hidden');
+        }
+
+        function closeSeatModal() {
+            document.getElementById('seatModal').classList.add('hidden');
+        }
+
+        function selectSeat(seatNum) {
+            selectedSeatNum = seatNum;
+            document.getElementById('selectedSeatNumber').innerText = `المقعد رقم (${seatNum})`;
+            document.getElementById('selectedSeatInfo').classList.remove('hidden');
+            renderSeatsGrid();
+            updateWhatsappLink();
+        }
+
+        function updateWhatsappLink() {
+            const btn = document.getElementById('modalWhatsappBtn');
+            let msg = `مرحباً مكتب السلطان، أود الحجز في رحلة: ${currentActiveTrip.name} (السعر: ${currentActiveTrip.price})`;
+            if (selectedSeatNum) {
+                msg += ` - المقعد المختار: [ ${selectedSeatNum} ]`;
+            }
+            btn.href = `https://wa.me/963900000000?text=${encodeURIComponent(msg)}`;
+        }
+
+        function renderSeatsGrid() {
+            const container = document.getElementById('seatsGrid');
+            container.innerHTML = '';
+            const total = currentActiveTrip.totalSeats || 20;
+            const booked = currentActiveTrip.bookedSeats || [];
+
+            for (let i = 1; i <= total; i++) {
+                const isBooked = booked.includes(i);
+                const isSelected = (selectedSeatNum === i);
+
+                let btnClass = "bg-emerald-500 hover:bg-emerald-600 text-white cursor-pointer";
+                if (isBooked) {
+                    btnClass = "bg-red-500 text-white cursor-not-allowed opacity-80";
+                } else if (isSelected) {
+                    btnClass = "bg-gold text-crimson-dark font-extrabold ring-2 ring-crimson scale-110";
+                }
+
+                container.innerHTML += `
+                    <button ${isBooked ? 'disabled' : ''} onclick="selectSeat(${i})" class="w-10 h-10 rounded-xl font-bold text-xs flex flex-col items-center justify-center shadow-sm seat-btn ${btnClass}">
+                        <i class="fa-solid fa-chair text-[10px]"></i>
+                        <span>${i}</span>
+                    </button>
+                `;
+            }
+        }
+
+        function renderTrips() {
+            const container = document.getElementById('tripsContainer');
+            const selectedGov = document.getElementById('govFilterSelect').value;
+
+            let filtered = trips.filter(t => {
+                const matchGov = (selectedGov === 'ALL') || (t.gov === selectedGov);
+                const matchTime = (selectedTimePeriod === 'ALL') || (t.period === selectedTimePeriod);
+                return matchGov && matchTime;
+            });
+
+            if(filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full bg-white p-8 text-center rounded-2xl border border-dashed border-gray-300">
+                        <i class="fa-solid fa-bus-simple text-4xl text-gray-300 mb-2"></i>
+                        <p class="text-sm font-bold text-gray-500">لا توجد رحلات برية مسجلة بهذه التصفية حالياً.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(trip => {
+                const total = trip.totalSeats || 20;
+                const bookedCount = (trip.bookedSeats || []).length;
+                const availableCount = Math.max(0, total - bookedCount);
+
+                return `
+                <div class="bg-white rounded-2xl p-4 crown-card relative flex flex-col justify-between border-t-4 border-t-gold">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="bg-crimson/10 text-crimson text-[11px] font-bold px-2.5 py-1 rounded-full border border-crimson/20">
+                                <i class="fa-solid fa-map-pin text-gold ml-1"></i> ${trip.gov}
+                            </span>
+                            <span class="${trip.period === 'صباحية' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'} text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1">
+                                <i class="fa-solid ${trip.period === 'صباحية' ? 'fa-sun' : 'fa-moon'}"></i> ${trip.period}
+                            </span>
+                        </div>
+
+                        <h4 class="font-black text-gray-800 text-base mb-2 leading-snug">${trip.name}</h4>
+
+                        <div class="my-3 bg-gray-50 p-2.5 rounded-xl border border-gray-100 space-y-1.5 text-xs">
+                            <div class="flex justify-between font-bold">
+                                <span><i class="fa-solid fa-clock text-gold ml-1"></i> الانطلاق: ${trip.time}</span>
+                                <span class="text-crimson font-extrabold">${trip.price}</span>
+                            </div>
+                            <div class="flex justify-between items-center text-[11px] pt-1 border-t border-gray-200">
+                                <span class="text-gray-600">المقاعد المتاحة:</span>
+                                <span class="font-black ${availableCount > 0 ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50'} px-2 py-0.5 rounded">
+                                    ${availableCount} من أصل ${total} مقعد
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
+                        <button onclick="openSeatModal(${trip.id})" class="flex-1 bg-gold hover:bg-gold-dark text-crimson-dark text-xs font-bold py-2.5 px-3 rounded-xl text-center transition flex items-center justify-center gap-1 shadow">
+                            <i class="fa-solid fa-chair text-sm"></i> استعلام المقاعد
+                        </button>
+                        
+                        ${isAdminView ? `
+                            <button onclick="startEditTrip(${trip.id})" title="تعديل" class="bg-amber-100 hover:bg-amber-200 text-amber-800 p-2.5 rounded-xl text-xs font-bold transition">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deleteTrip('${trip.firebaseKey}')" title="حذف" class="bg-red-100 hover:bg-red-200 text-red-700 p-2.5 rounded-xl text-xs font-bold transition">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `}).join('');
+        }
+    </script>
+</body>
+</html>
